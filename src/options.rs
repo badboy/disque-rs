@@ -12,8 +12,8 @@ pub struct WriteOptions {
     /// the number of seconds that should elapse
     /// before the job is queued by any server.
     ///
-    /// default: 0
-    pub delay: u32,
+    /// default: None
+    pub delay: Option<u32>,
 
     /// period after which, if no ACK is received, the job is put again
     /// into the queue for delivery. If RETRY is 0,
@@ -51,7 +51,7 @@ impl WriteOptions {
         WriteOptions {
             timeout: 0,
             replicate: None,
-            delay: 0,
+            delay: None,
             retry: None,
             ttl: None,
             maxlen: None,

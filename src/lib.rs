@@ -179,8 +179,7 @@ fn extend_with_write_options<'a>(cmd: &'a mut redis::Cmd,
                              options: &WriteOptions) -> &'a redis::Cmd {
     cmd.arg(options.timeout);
 
-    cmd.arg("DELAY").arg(options.delay);
-
+    options.delay.map(|val| cmd.arg("DELAY").arg(val));
     options.replicate.map(|val| cmd.arg("REPLICATE").arg(val));
     options.retry.map(|val| cmd.arg("RETRY").arg(val));
     options.ttl.map(|val| cmd.arg("TTL").arg(val));
