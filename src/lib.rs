@@ -92,9 +92,19 @@ impl Client {
 
         for job in jobs {
             cb(&job[0], &job[1], &job[2]);
+            self.ackjob(&job[1]);
         }
 
         len
+    }
+
+    fn ackjob(&self, job_id: &str) {
+        let con = match &self.client {
+            &Some(ref c) => c.get_connection().unwrap(),
+            _ => panic!("no client :sadface:")
+        };
+
+        redis::cmd("ACKJOB").arg(job_id).execute(&con);
     }
 
     fn explore(&mut self, hosts: Vec<&'static str>) {
