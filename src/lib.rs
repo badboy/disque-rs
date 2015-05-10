@@ -2,6 +2,10 @@ extern crate redis;
 
 use std::collections::HashMap;
 
+mod options;
+
+pub use options::{WriteOptions,ReadOptions};
+
 pub struct Client {
     nodes: HashMap<String, String>,
     client: Option<redis::Client>,
@@ -22,7 +26,9 @@ impl redis::FromRedisValue for MyType {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<MyType> {
         match *v {
             redis::Value::Int(val) => Ok(Int(val)),
-            redis::Value::Data(ref bytes) => Ok(Str(String::from_utf8(bytes.clone()).unwrap())),
+            redis::Value::Data(ref bytes) => {
+                Ok(Str(String::from_utf8(bytes.clone()).unwrap()))
+            },
             redis::Value::Bulk(ref items) => {
                 let items = items.iter().map(|item| {
                     redis::FromRedisValue::from_redis_value(&item).unwrap()
@@ -49,7 +55,10 @@ impl Client {
     }
 
 
-    pub fn push<'b, 'c>(&mut self, queue: &'b str, job: &'c str, timeout: u64) -> String {
+    pub fn push<'b, 'c>(&mut self,
+                        queue: &'b str,
+                        job: &'c str,
+                        options: &WriteOptions) -> String {
         self.pick_client();
 
         let con = match &self.client {
@@ -57,10 +66,17 @@ impl Client {
             _ => panic!("no client :sadface:")
         };
 
-        redis::cmd("ADDJOB").arg(queue).arg(job).arg(timeout).query(&con).unwrap()
+        extend_with_write_options(
+            redis::cmd("ADDJOB").arg(queue).arg(job),
+            options)
+            .query(&con).unwrap()
     }
 
-    pub fn fetch<'b, F>(&mut self, queue: &'b str, cb: F) -> usize where F: Fn(&str, &str, &str) {
+    pub fn fetch<F>(&mut self,
+                        queue: &[&str],
+                        options: &ReadOptions,
+                        cb: F) -> usize
+        where F: Fn(&str, &str, &str) {
         self.pick_client();
 
         let con = match &self.client {
@@ -68,15 +84,8 @@ impl Client {
             _ => panic!("no client :sadface:")
         };
 
-        let timeout = 0;
-        let count = 5;
-        let jobs : Vec<Vec<String>> = redis::cmd("GETJOB")
-            .arg("TIMEOUT")
-            .arg(timeout)
-            .arg("COUNT")
-            .arg(count)
-            .arg("FROM")
-            .arg(queue)
+        let jobs : Vec<Vec<String>> = extend_with_read_options(
+            redis::cmd("GETJOB").arg("FROM").arg(queue), options)
             .query(&con).unwrap();
 
         let len = jobs.len();
@@ -138,4 +147,30 @@ impl Client {
         self.client = Some(c);
         &self.client
     }
+}
+
+
+fn extend_with_write_options<'a>(cmd: &'a mut redis::Cmd,
+                             options: &WriteOptions) -> &'a redis::Cmd {
+    cmd.arg(options.timeout);
+
+    cmd.arg("DELAY").arg(options.delay);
+    cmd.arg("MAXLEN").arg(options.delay);
+
+    options.replicate.map(|val| cmd.arg("REPLICATE").arg(val));
+    options.retry.map(|val| cmd.arg("RETRY").arg(val));
+    options.ttl.map(|val| cmd.arg("TTL").arg(val));
+
+    if options.async {
+        cmd.arg("ASYNC");
+    }
+
+    cmd
+}
+
+fn extend_with_read_options<'a>(cmd: &'a mut redis::Cmd,
+                            options: &ReadOptions) -> &'a redis::Cmd {
+    cmd.arg("TIMEOUT").arg(options.timeout);
+    cmd.arg("COUNT").arg(options.count);
+    cmd
 }
