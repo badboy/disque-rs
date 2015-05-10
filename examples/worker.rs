@@ -17,6 +17,7 @@ fn main() {
     loop {
         let l = client.fetch(&["queue"], &opt, |queue, _job_id, job| {
             println!("Got a job from queue {:?}: {:?}", queue, job);
+            true
         });
         println!("Handled {} jobs in a batch", l);
     }

@@ -76,7 +76,7 @@ impl Client {
                         queue: &[&str],
                         options: &ReadOptions,
                         cb: F) -> usize
-        where F: Fn(&str, &str, &str) {
+        where F: Fn(&str, &str, &str) -> bool {
         self.pick_client();
 
         let con = match &self.client {
@@ -91,8 +91,9 @@ impl Client {
         let len = jobs.len();
 
         for job in jobs {
-            cb(&job[0], &job[1], &job[2]);
-            self.ackjob(&job[1]);
+            if cb(&job[0], &job[1], &job[2]) {
+                self.ackjob(&job[1]);
+            }
         }
 
         len
