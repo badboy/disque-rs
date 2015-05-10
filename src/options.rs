@@ -33,8 +33,8 @@ pub struct WriteOptions {
     /// the specified queue name, the message is refused and
     /// an error reported to the client.
     ///
-    /// default: 0 (no limit)
-    pub maxlen: u32,
+    /// default: None (no limit)
+    pub maxlen: Option<u32>,
 
     /// asks the server to let the command return ASAP and replicate the job
     /// to other nodes in the background.
@@ -54,7 +54,7 @@ impl WriteOptions {
             delay: 0,
             retry: None,
             ttl: None,
-            maxlen: 0,
+            maxlen: None,
             async: false
         }
     }

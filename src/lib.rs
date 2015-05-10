@@ -61,9 +61,9 @@ impl Client {
     /// Push a new job to the specified queue
     ///
     /// Returns the job id.
-    pub fn push<'b, 'c>(&mut self,
-                        queue: &'b str,
-                        job: &'c str,
+    pub fn push(&mut self,
+                        queue: &str,
+                        job: &str,
                         options: &WriteOptions) -> String {
         self.pick_client();
 
@@ -180,11 +180,11 @@ fn extend_with_write_options<'a>(cmd: &'a mut redis::Cmd,
     cmd.arg(options.timeout);
 
     cmd.arg("DELAY").arg(options.delay);
-    cmd.arg("MAXLEN").arg(options.delay);
 
     options.replicate.map(|val| cmd.arg("REPLICATE").arg(val));
     options.retry.map(|val| cmd.arg("RETRY").arg(val));
     options.ttl.map(|val| cmd.arg("TTL").arg(val));
+    options.maxlen.map(|val| cmd.arg("MAXLEN").arg(val));
 
     if options.async {
         cmd.arg("ASYNC");
