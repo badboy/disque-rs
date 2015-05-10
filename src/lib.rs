@@ -41,6 +41,9 @@ impl redis::FromRedisValue for MyType {
 }
 
 impl Client {
+    /// Creates a new client
+    ///
+    /// It auto-detects available nodes via the first node it can successfully connect to.
     pub fn new(hosts: Vec<&'static str>) -> Option<Client> {
         let scout = redis::Client::open(hosts[0]).unwrap();
         let mut c = Client{
@@ -55,6 +58,9 @@ impl Client {
     }
 
 
+    /// Push a new job to the specified queue
+    ///
+    /// Returns the job id.
     pub fn push<'b, 'c>(&mut self,
                         queue: &'b str,
                         job: &'c str,
@@ -72,10 +78,18 @@ impl Client {
             .query(&con).unwrap()
     }
 
+    /// Fetches some jobs from the specified queues
+    ///
+    /// Queues are tried in order and the callback is called for every returned job.
+    /// If the callback returns `true` the job is acknowledged back to the Disque server
+    /// (and thus fully deleted).
+    /// On `false` nothing happens.
+    ///
+    /// Returns the total number of processed jobs.
     pub fn fetch<F>(&mut self,
                         queue: &[&str],
                         options: &ReadOptions,
-                        cb: F) -> usize
+                        callback: F) -> usize
         where F: Fn(&str, &str, &str) -> bool {
         self.pick_client();
 
@@ -91,7 +105,7 @@ impl Client {
         let len = jobs.len();
 
         for job in jobs {
-            if cb(&job[0], &job[1], &job[2]) {
+            if callback(&job[0], &job[1], &job[2]) {
                 self.ackjob(&job[1]);
             }
         }
